@@ -1,0 +1,44 @@
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { PdbEntryDetails } from '@/components/pdb/PdbEntryDetails'
+import { PdbStructureViewer } from '@/components/pdb/PdbStructureViewer'
+import { getPdbEntryPage } from '@/db/queries/entries'
+
+type PdbEntryRouteProps = {
+  params: Promise<{
+    pdbId: string
+  }>
+}
+
+export default async function PdbEntryPage({ params }: PdbEntryRouteProps) {
+  const { pdbId } = await params
+  const entryPage = await getPdbEntryPage(pdbId)
+
+  if (!entryPage) {
+    notFound()
+  }
+
+  const chainPairs = entryPage.peptides.flatMap((peptide) => peptide.chainPairs)
+
+  return (
+    <main className="min-h-screen bg-[#f5f7f9] text-[#171717]">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 sm:px-8 lg:px-12">
+        <Link
+          href="/"
+          className="w-fit rounded-sm text-sm font-semibold text-[#0c5f46] underline-offset-4 hover:underline focus:ring-2 focus:ring-[#1f6f54] focus:outline-none"
+        >
+          Back to search
+        </Link>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)] lg:items-start">
+          <PdbEntryDetails entryPage={entryPage} />
+          <PdbStructureViewer
+            pdbId={entryPage.entry.pdbId}
+            assemblyFileName={entryPage.entry.assemblyFileStem}
+            chainPairs={chainPairs}
+          />
+        </div>
+      </div>
+    </main>
+  )
+}

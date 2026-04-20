@@ -9,6 +9,8 @@ import {
   peptides,
   peptidesAccessions,
   peptidesMetadata,
+  targetsAccessions,
+  uniprotMetadata,
 } from '@/db/schema'
 
 type JsonScalar = string | number | boolean | null
@@ -33,6 +35,7 @@ export type PdbEntryChainPair = {
   receptorChainId: string
   receptorSequence: string
   receptorResidueNames: string[]
+  receptorAccessions: PdbEntryUniprotAccession[]
 }
 
 export type PdbEntryPeptide = {
@@ -43,10 +46,25 @@ export type PdbEntryPeptide = {
   entityName: string | null
   organismScientificNames: string[]
   taxonomyIds: number[]
-  accessions: string[]
+  accessions: PdbEntryUniprotAccession[]
   polymerType: string | null
   sequenceLength: number | null
   chainPairs: PdbEntryChainPair[]
+}
+
+export type PdbEntryUniprotAccession = {
+  accession: string
+  reviewed: boolean | null
+  recommendedName: string | null
+  geneNames: string[]
+  organismScientificName: string | null
+  taxonomyId: number | null
+  functionText: string | null
+  subcellularLocations: string[]
+  keywords: string[]
+  goTerms: string[]
+  interproIds: string[]
+  pfamIds: string[]
 }
 
 export type PdbEntryPage = {
@@ -76,6 +94,26 @@ function parseNumberArray(value: string): number[] {
   return parseJsonArray(value).filter((item): item is number => typeof item === 'number')
 }
 
+function mapUniprotAccession(
+  accession: string,
+  metadata: typeof uniprotMetadata.$inferSelect | null
+): PdbEntryUniprotAccession {
+  return {
+    accession,
+    reviewed: metadata ? metadata.reviewed === 1 : null,
+    recommendedName: metadata?.recommendedName ?? null,
+    geneNames: metadata ? parseStringArray(metadata.geneNamesJson) : [],
+    organismScientificName: metadata?.organismScientificName ?? null,
+    taxonomyId: metadata?.taxonomyId ?? null,
+    functionText: metadata?.functionText ?? null,
+    subcellularLocations: metadata ? parseStringArray(metadata.subcellularLocationsJson) : [],
+    keywords: metadata ? parseStringArray(metadata.keywordsJson) : [],
+    goTerms: metadata ? parseStringArray(metadata.goTermsJson) : [],
+    interproIds: metadata ? parseStringArray(metadata.interproIdsJson) : [],
+    pfamIds: metadata ? parseStringArray(metadata.pfamIdsJson) : [],
+  }
+}
+
 export async function getPdbEntryPage(pdbId: string): Promise<PdbEntryPage | null> {
   const normalizedPdbId = pdbId.trim().toUpperCase()
 
@@ -97,44 +135,69 @@ export async function getPdbEntryPage(pdbId: string): Promise<PdbEntryPage | nul
     return null
   }
 
-  const [peptideRows, accessionRows, chainPairRows] = await Promise.all([
-    db
-      .select({
-        peptide: peptides,
-        metadata: peptidesMetadata,
-      })
-      .from(peptides)
-      .leftJoin(
-        peptidesMetadata,
-        and(
-          eq(peptides.pdbId, peptidesMetadata.pdbId),
-          eq(peptides.entityId, peptidesMetadata.entityId)
+  const [peptideRows, peptideAccessionRows, targetAccessionRows, chainPairRows] = await Promise.all(
+    [
+      db
+        .select({
+          peptide: peptides,
+          metadata: peptidesMetadata,
+        })
+        .from(peptides)
+        .leftJoin(
+          peptidesMetadata,
+          and(
+            eq(peptides.pdbId, peptidesMetadata.pdbId),
+            eq(peptides.entityId, peptidesMetadata.entityId)
+          )
         )
-      )
-      .where(eq(peptides.pdbId, normalizedPdbId))
-      .orderBy(asc(peptides.entityId)),
-    db
-      .select()
-      .from(peptidesAccessions)
-      .where(eq(peptidesAccessions.pdbId, normalizedPdbId))
-      .orderBy(asc(peptidesAccessions.entityId), asc(peptidesAccessions.accession)),
-    db
-      .select()
-      .from(chainPairs)
-      .where(eq(chainPairs.pdbId, normalizedPdbId))
-      .orderBy(
-        asc(chainPairs.peptideEntityId),
-        asc(chainPairs.peptideChainId),
-        asc(chainPairs.receptorChainId)
-      ),
-  ])
+        .where(eq(peptides.pdbId, normalizedPdbId))
+        .orderBy(asc(peptides.entityId)),
+      db
+        .select({
+          entityId: peptidesAccessions.entityId,
+          accession: peptidesAccessions.accession,
+          metadata: uniprotMetadata,
+        })
+        .from(peptidesAccessions)
+        .leftJoin(uniprotMetadata, eq(peptidesAccessions.accession, uniprotMetadata.accession))
+        .where(eq(peptidesAccessions.pdbId, normalizedPdbId))
+        .orderBy(asc(peptidesAccessions.entityId), asc(peptidesAccessions.accession)),
+      db
+        .select({
+          entityId: targetsAccessions.entityId,
+          accession: targetsAccessions.accession,
+          metadata: uniprotMetadata,
+        })
+        .from(targetsAccessions)
+        .leftJoin(uniprotMetadata, eq(targetsAccessions.accession, uniprotMetadata.accession))
+        .where(eq(targetsAccessions.pdbId, normalizedPdbId))
+        .orderBy(asc(targetsAccessions.entityId), asc(targetsAccessions.accession)),
+      db
+        .select()
+        .from(chainPairs)
+        .where(eq(chainPairs.pdbId, normalizedPdbId))
+        .orderBy(
+          asc(chainPairs.peptideEntityId),
+          asc(chainPairs.peptideChainId),
+          asc(chainPairs.receptorChainId)
+        ),
+    ]
+  )
 
-  const accessionsByEntityId = new Map<string, string[]>()
+  const peptideAccessionsByEntityId = new Map<string, PdbEntryUniprotAccession[]>()
 
-  for (const accessionRow of accessionRows) {
-    const accessions = accessionsByEntityId.get(accessionRow.entityId) ?? []
-    accessions.push(accessionRow.accession)
-    accessionsByEntityId.set(accessionRow.entityId, accessions)
+  for (const accessionRow of peptideAccessionRows) {
+    const accessions = peptideAccessionsByEntityId.get(accessionRow.entityId) ?? []
+    accessions.push(mapUniprotAccession(accessionRow.accession, accessionRow.metadata))
+    peptideAccessionsByEntityId.set(accessionRow.entityId, accessions)
+  }
+
+  const targetAccessionsByEntityId = new Map<string, PdbEntryUniprotAccession[]>()
+
+  for (const accessionRow of targetAccessionRows) {
+    const accessions = targetAccessionsByEntityId.get(accessionRow.entityId) ?? []
+    accessions.push(mapUniprotAccession(accessionRow.accession, accessionRow.metadata))
+    targetAccessionsByEntityId.set(accessionRow.entityId, accessions)
   }
 
   const chainPairsByPeptideEntityId = new Map<string, PdbEntryChainPair[]>()
@@ -151,6 +214,7 @@ export async function getPdbEntryPage(pdbId: string): Promise<PdbEntryPage | nul
       receptorChainId: chainPairRow.receptorChainId,
       receptorSequence: chainPairRow.receptorSequence,
       receptorResidueNames: parseStringArray(chainPairRow.receptorResidueNamesJson),
+      receptorAccessions: targetAccessionsByEntityId.get(chainPairRow.receptorEntityId) ?? [],
     })
 
     chainPairsByPeptideEntityId.set(chainPairRow.peptideEntityId, peptideChainPairs)
@@ -181,7 +245,7 @@ export async function getPdbEntryPage(pdbId: string): Promise<PdbEntryPage | nul
         ? parseStringArray(metadata.organismScientificNamesJson)
         : [],
       taxonomyIds: metadata ? parseNumberArray(metadata.taxonomyIdsJson) : [],
-      accessions: accessionsByEntityId.get(peptide.entityId) ?? [],
+      accessions: peptideAccessionsByEntityId.get(peptide.entityId) ?? [],
       polymerType: metadata?.polymerType ?? null,
       sequenceLength: metadata?.sequenceLength ?? null,
       chainPairs: chainPairsByPeptideEntityId.get(peptide.entityId) ?? [],
