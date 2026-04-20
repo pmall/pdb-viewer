@@ -31,12 +31,16 @@ export default async function PdbEntryPage({ params }: PdbEntryRouteProps) {
         </Link>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,32rem)] lg:items-start">
-          <PdbEntryDetails entryPage={entryPage} />
-          <PdbStructureViewer
-            pdbId={entryPage.entry.pdbId}
-            assemblyFileName={entryPage.entry.assemblyFileStem}
-            chainPairs={chainPairs}
-          />
+          <div className="min-w-0 break-words">
+            <PdbEntryDetails entryPage={entryPage} />
+          </div>
+          <div className="min-w-0 lg:sticky lg:top-6">
+            <PdbStructureViewer
+              pdbId={entryPage.entry.pdbId}
+              assemblyFileName={entryPage.entry.assemblyFileStem}
+              chainPairs={chainPairs}
+            />
+          </div>
         </div>
       </div>
     </main>

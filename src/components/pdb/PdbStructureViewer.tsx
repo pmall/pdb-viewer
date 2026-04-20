@@ -213,6 +213,10 @@ export function PdbStructureViewer({
       const { chainPair } = (event as CustomEvent<PdbChainPairFocusDetail>).detail
 
       void focusChainPair(chainPair)
+
+      if (window.innerWidth < 1024 && containerRef.current) {
+        containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
     }
 
     window.addEventListener(PDB_CHAIN_PAIR_FOCUS_EVENT, focusChainPairFromEvent)
@@ -223,7 +227,7 @@ export function PdbStructureViewer({
   }, [focusChainPair])
 
   return (
-    <aside className="flex flex-col gap-4 lg:sticky lg:top-6">
+    <aside className="flex flex-col gap-4">
       <section className="border border-[#d6dee3] bg-white p-5">
         <div className="flex flex-col gap-3">
           <p className="text-sm font-semibold text-[#426352] uppercase">Structure viewer</p>
