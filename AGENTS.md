@@ -10,7 +10,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreSQL, Tailwind CSS, and Prettier.
 
-## 1. Package And Tooling
+## 1. General Purpose Coding Guidelines
+
+### Package And Tooling
 
 - Always use `pnpm`.
 - Never use `npm`, `yarn`, or `bun` for installs, scripts, or lockfile changes.
@@ -23,7 +25,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Use `postgres` as the PostgreSQL driver for Drizzle.
 - Before any Next.js-specific code change, read the relevant version-matched guide in `node_modules/next/dist/docs/`.
 
-## 2. Project Structure
+### Project Structure
 
 - Keep application source code under `src`.
 - Use the Next.js `src` pattern with the App Router at `src/app`.
@@ -36,7 +38,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Keep Drizzle migrations under `src/db/migrations`.
 - Do not add a Pages Router unless the user explicitly asks for it.
 
-## 3. Next.js Conventions
+### Next.js Conventions
 
 - Follow the App Router conventions from the local Next.js docs.
 - Route folders define URL segments.
@@ -48,7 +50,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Keep metadata in the framework-supported metadata exports or metadata files.
 - Special Next.js files such as `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, and `template.tsx` must follow Next.js export requirements, including default exports where required by the framework.
 
-## 4. Naming And Exports
+### Naming And Exports
 
 - React component names must use PascalCase.
 - React component file names must use PascalCase, for example `UserMenu.tsx`.
@@ -59,7 +61,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Do not use default exports for ordinary components.
 - Only use default exports when required by Next.js special files or another explicit framework/tooling contract.
 
-## 5. Code Style
+### Code Style
 
 - Keep modules focused on one responsibility.
 - Prefer clear component, function, and variable names over abbreviations.
@@ -74,7 +76,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Keep comments short and precise.
 - Use complete-sentence comments immediately before the non-obvious block they explain.
 
-## 6. TypeScript
+### TypeScript
 
 - Keep `strict` TypeScript enabled.
 - Avoid `any`.
@@ -87,7 +89,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Type React props with `type`, not `interface`, unless declaration merging is required.
 - Derive types from Drizzle schema where practical instead of duplicating database shapes by hand.
 
-## 7. Drizzle And Database
+### Drizzle And Database
 
 - Use Drizzle ORM for schema definitions, queries, and migrations.
 - Define PostgreSQL tables with `drizzle-orm/pg-core`.
@@ -102,7 +104,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Keep database queries in server-only modules, Server Components, Route Handlers, or Server Actions.
 - Run schema-changing work through Drizzle migrations.
 
-## 8. Environment Variables
+### Environment Variables
 
 - Keep required environment variable examples in `.env.example`.
 - Do not commit `.env`, `.env.local`, or other real environment files.
@@ -110,7 +112,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Do not expose secrets through `NEXT_PUBLIC_` variables.
 - Only use `NEXT_PUBLIC_` for values that are safe to send to the browser.
 
-## 9. Code Updates
+### Code Updates
 
 - Code updates must be defensive.
 - Do not update working parts of the code unless the user explicitly asks for that change.
@@ -121,7 +123,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Before finishing, manually check for dead code, dead imports, unused exports, and obsolete files that automated tooling did not remove.
 - Check the diff and confirm it contains only intentional changes.
 
-## 10. Verification
+### Verification
 
 At the end of every coding session, run the relevant checks:
 
@@ -140,7 +142,7 @@ For database changes:
 - Run `pnpm db:generate` after schema changes that require a migration.
 - Do not run database migrations against shared or production databases unless the user explicitly asks.
 
-## 11. Git Workflow
+### Git Workflow
 
 - Never commit unless the user explicitly asks for a commit.
 - Check the diff before preparing a commit message.
@@ -152,3 +154,107 @@ For database changes:
 - Do not focus commit messages on low-level implementation details unless those details affect other developers.
 - Never add a co-author.
 - Never revert user changes unless the user explicitly asks for that revert.
+
+## 2. PDB Viewer Implementation Hints
+
+This project is a readonly viewer for a PDB-derived peptide entity database.
+
+### Application Model
+
+- Search is target-centered.
+- PDB entry pages are peptide-centered.
+- The main detail route is one page per PDB entry: `/pdb/[pdbId]`.
+- Autocomplete is the only expected API route.
+- Database reads must live in shared server-side query modules.
+- The normal search results flow should remain server-rendered.
+- The PDB entry page must remain fully server-rendered.
+
+### Target Architecture
+
+Database access should be centralized under:
+
+```text
+src/db/
+  client.ts
+  schema.ts
+  queries/
+    entries.ts
+    search.ts
+```
+
+Application routes should use those query modules directly:
+
+```text
+src/app/
+  page.tsx
+  pdb/[pdbId]/page.tsx
+  api/search-suggestions/route.ts
+```
+
+UI components should be grouped by domain:
+
+```text
+src/components/
+  pdb/
+  search/
+```
+
+The PDB page should use this call path:
+
+```text
+src/app/pdb/[pdbId]/page.tsx
+  -> src/db/queries/entries.ts
+    -> db
+```
+
+Search results should use this call path:
+
+```text
+src/app/page.tsx?q=...
+  -> src/db/queries/search.ts
+    -> db
+```
+
+Autocomplete should use this call path:
+
+```text
+src/components/search/SearchBox.tsx
+  -> /api/search-suggestions
+    -> src/db/queries/search.ts
+      -> db
+```
+
+### Domain Model
+
+Each PDB entry page should render:
+
+- Entry metadata.
+- Peptide entities associated with the PDB entry.
+- Peptide metadata and peptide accessions.
+- Curated chain pairs for each peptide entity.
+
+A chain pair is the concrete curated pairing of:
+
+- The peptide chain.
+- The receptor/target chain.
+
+The important relationship is:
+
+```text
+entries.pdb_id
+  -> peptides.pdb_id
+  -> chain_pairs.pdb_id
+
+peptides.entity_id
+  -> chain_pairs.peptide_entity_id
+```
+
+Target-centered tables are used primarily for search, not as first-class detail pages:
+
+```text
+search_terms
+  -> search_terms_targets
+    -> entries
+```
+
+`search_terms.term` has a trigram index and should power fuzzy search.
