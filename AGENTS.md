@@ -24,6 +24,7 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Use Drizzle ORM for database access.
 - Use `postgres` as the PostgreSQL driver for Drizzle.
 - Before any Next.js-specific code change, read the relevant version-matched guide in `node_modules/next/dist/docs/`.
+- Never run a development server such as `pnpm dev` or `next dev`.
 
 ### Project Structure
 
