@@ -13,7 +13,7 @@ type ChainPairAccordionProps = {
 
 function ChainPairHeader({ chainPair }: { chainPair: PdbEntryChainPair }) {
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <header className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="bg-[#dcebe3] text-[#174b37] hover:bg-[#dcebe3]">
@@ -28,7 +28,7 @@ function ChainPairHeader({ chainPair }: { chainPair: PdbEntryChainPair }) {
         </div>
       </div>
 
-      <div className="flex items-center">
+      <div className="flex shrink-0 items-center">
         <Button
           type="button"
           size="sm"
