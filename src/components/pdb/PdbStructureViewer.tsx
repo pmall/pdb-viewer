@@ -24,6 +24,17 @@ type PdbStructureViewerProps = {
 
 type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error'
 
+type StructureChainIdentifier = {
+  chainname: string
+  chainid: string
+}
+
+type ChainPairSelections = {
+  peptideSelection: string | null
+  receptorSelection: string | null
+  combinedSelection: string | null
+}
+
 function hasKnownStructureExtension(fileName: string): boolean {
   return /\.(bcif|cif|ent|mmtf|pdb)(\.gz)?$/i.test(fileName)
 }
@@ -40,8 +51,59 @@ function chainSelection(chainId: string): string {
   return `:${chainId.replaceAll("'", '')}`
 }
 
-function chainPairSelection(chainPair: PdbEntryChainPair): string {
-  return `${chainSelection(chainPair.peptideChainId)} or ${chainSelection(chainPair.receptorChainId)}`
+function joinChainSelections(chainNames: string[]): string | null {
+  const selections = Array.from(new Set(chainNames)).map(chainSelection)
+
+  return selections.length > 0 ? selections.join(' or ') : null
+}
+
+function resolveCuratedChainSelection(
+  structureChains: StructureChainIdentifier[],
+  curatedChainId: string
+): string | null {
+  const chainIdMatches = structureChains
+    .filter((chain) => chain.chainid === curatedChainId)
+    .map((chain) => chain.chainname)
+
+  if (chainIdMatches.length > 0) {
+    return joinChainSelections(chainIdMatches)
+  }
+
+  const chainNameMatches = structureChains
+    .filter((chain) => chain.chainname === curatedChainId)
+    .map((chain) => chain.chainname)
+
+  return joinChainSelections(chainNameMatches)
+}
+
+function getStructureChainIdentifiers(component: StructureComponent): StructureChainIdentifier[] {
+  const structureChains: StructureChainIdentifier[] = []
+
+  component.structure.eachChain((chain) => {
+    structureChains.push({
+      chainname: chain.chainname,
+      chainid: chain.chainid,
+    })
+  })
+
+  return structureChains
+}
+
+function resolveChainPairSelections(
+  component: StructureComponent,
+  chainPair: PdbEntryChainPair
+): ChainPairSelections {
+  const structureChains = getStructureChainIdentifiers(component)
+  const peptideSelection = resolveCuratedChainSelection(structureChains, chainPair.peptideChainId)
+  const receptorSelection = resolveCuratedChainSelection(structureChains, chainPair.receptorChainId)
+  const combinedSelection =
+    peptideSelection && receptorSelection ? `${peptideSelection} or ${receptorSelection}` : null
+
+  return {
+    peptideSelection,
+    receptorSelection,
+    combinedSelection,
+  }
 }
 
 function isStructureComponent(component: Component | void): component is StructureComponent {
@@ -172,6 +234,17 @@ export function PdbStructureViewer({
         return
       }
 
+      const { peptideSelection, receptorSelection, combinedSelection } = resolveChainPairSelections(
+        component,
+        chainPair
+      )
+
+      if (!peptideSelection || !receptorSelection || !combinedSelection) {
+        setErrorMessage('The loaded assembly does not contain both curated chains for this pair.')
+        return
+      }
+
+      setErrorMessage(null)
       component.removeAllRepresentations()
 
       component.addRepresentation('cartoon', {
@@ -182,31 +255,31 @@ export function PdbStructureViewer({
       })
 
       component.addRepresentation('cartoon', {
-        sele: chainSelection(chainPair.peptideChainId),
+        sele: peptideSelection,
         colorScheme: 'uniform',
         colorValue: PEPTIDE_COLOR,
         opacity: 1,
       })
       component.addRepresentation('cartoon', {
-        sele: chainSelection(chainPair.receptorChainId),
+        sele: receptorSelection,
         colorScheme: 'uniform',
         colorValue: TARGET_COLOR,
         opacity: 1,
       })
       component.addRepresentation('ball+stick', {
-        sele: chainSelection(chainPair.peptideChainId),
+        sele: peptideSelection,
         colorScheme: 'uniform',
         colorValue: PEPTIDE_COLOR,
         radiusScale: 0.62,
       })
       component.addRepresentation('ball+stick', {
-        sele: chainSelection(chainPair.receptorChainId),
+        sele: receptorSelection,
         colorScheme: 'uniform',
         colorValue: TARGET_COLOR,
         radiusScale: 0.62,
       })
       setActiveChainPairId(chainPair.chainPairId)
-      component.autoView(chainPairSelection(chainPair), 650)
+      component.autoView(combinedSelection, 650)
     },
     [loadAssembly]
   )
@@ -280,10 +353,11 @@ export function PdbStructureViewer({
 
           <p className="mt-3 min-h-6 text-sm text-[#555f58]" aria-live="polite">
             {status === 'idle' ? 'The assembly loads only after you request it.' : null}
-            {status === 'ready' && activeChainPair
+            {status === 'ready' && errorMessage ? errorMessage : null}
+            {status === 'ready' && !errorMessage && activeChainPair
               ? `Focused peptide chain ${activeChainPair.peptideChainId} with target chain ${activeChainPair.receptorChainId}.`
               : null}
-            {status === 'ready' && !activeChainPair ? 'Assembly loaded.' : null}
+            {status === 'ready' && !errorMessage && !activeChainPair ? 'Assembly loaded.' : null}
             {status === 'error' ? (errorMessage ?? 'Assembly loading failed.') : null}
           </p>
 
