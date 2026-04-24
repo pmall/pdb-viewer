@@ -5,7 +5,7 @@ import { dispatchPdbChainPairFocus } from '@/components/pdb/chainPairFocusEvent'
 import { ResidueSequence } from '@/components/pdb/ResidueSequence'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 
 type ChainPairAccordionProps = {
   chainPairs: PdbEntryChainPair[]
@@ -13,7 +13,7 @@ type ChainPairAccordionProps = {
 
 function ChainPairHeader({ chainPair }: { chainPair: PdbEntryChainPair }) {
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="bg-[#dcebe3] text-[#174b37] hover:bg-[#dcebe3]">
@@ -61,36 +61,39 @@ function SequenceSection({
   )
 }
 
+function ChainPairCard({ chainPair }: { chainPair: PdbEntryChainPair }) {
+  return (
+    <Card className="border border-[#d6dee3] bg-[#fbfcfc] py-0 shadow-none ring-0">
+      <CardHeader className="px-4 py-4">
+        <ChainPairHeader chainPair={chainPair} />
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="grid gap-5">
+          <SequenceSection
+            title="Peptide residues"
+            sequence={chainPair.peptideSequence}
+            residueNames={chainPair.peptideResidueNames}
+          />
+          <SequenceSection
+            title="Target residues"
+            sequence={chainPair.receptorSequence}
+            residueNames={chainPair.receptorResidueNames}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function ChainPairAccordion({ chainPairs }: ChainPairAccordionProps) {
   if (chainPairs.length === 0) {
     return <p className="text-sm text-[#5f675f]">No curated chain pairs for this peptide.</p>
   }
 
   return (
-    <div className="flex flex-col">
-      {chainPairs.map((chainPair, index) => (
-        <div key={chainPair.chainPairId}>
-          {index > 0 ? (
-            <div className="py-8">
-              <Separator className="bg-[#d6dee3]" />
-            </div>
-          ) : null}
-
-          <ChainPairHeader chainPair={chainPair} />
-
-          <div className="mt-5 grid gap-5">
-            <SequenceSection
-              title="Peptide residues"
-              sequence={chainPair.peptideSequence}
-              residueNames={chainPair.peptideResidueNames}
-            />
-            <SequenceSection
-              title="Target residues"
-              sequence={chainPair.receptorSequence}
-              residueNames={chainPair.receptorResidueNames}
-            />
-          </div>
-        </div>
+    <div className="flex flex-col gap-4">
+      {chainPairs.map((chainPair) => (
+        <ChainPairCard key={chainPair.chainPairId} chainPair={chainPair} />
       ))}
     </div>
   )

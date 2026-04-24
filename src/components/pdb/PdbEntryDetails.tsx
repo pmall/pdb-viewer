@@ -126,15 +126,19 @@ function PeptideEntity({ peptide }: { peptide: PdbEntryPeptide }) {
           </div>
         </dl>
 
-        <div className="mt-6">
-          <h3 className="text-base font-semibold">Peptide sequence</h3>
-          <p className="mt-1 text-sm text-[#5f675f]">
-            Click a residue to compare the one-letter code with the three-letter residue name.
-          </p>
-          <div className="mt-3">
+        <Card className="mt-6 border border-[#d6dee3] bg-[#fbfcfc] py-0 shadow-none ring-0">
+          <CardHeader className="gap-2 px-4 py-4">
+            <CardTitle className="text-base font-semibold text-[#171717]">
+              Peptide sequence
+            </CardTitle>
+            <p className="text-sm text-[#5f675f]">
+              Click a residue to compare the one-letter code with the three-letter residue name.
+            </p>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
             <ResidueSequence sequence={peptide.sequence} residueNames={peptide.residueNames} />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         <div className="mt-6">
           <h3 className="text-base font-semibold">Curated chain pairs</h3>
