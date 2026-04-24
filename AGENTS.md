@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # PDB Viewer - Agent Instructions
 
-This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreSQL, Tailwind CSS, and Prettier.
+This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreSQL, Tailwind CSS, shadcn/ui, and Prettier.
 
 ## 1. General Purpose Coding Guidelines
 
@@ -23,6 +23,9 @@ This repository uses Next.js App Router, pnpm, TypeScript, Drizzle ORM, PostgreS
 - Use TypeScript for type checking.
 - Use Drizzle ORM for database access.
 - Use `postgres` as the PostgreSQL driver for Drizzle.
+- Use the installed shadcn/ui component library directly for common UI primitives such as buttons, badges, cards, accordions, inputs, tables, and separators.
+- Do not edit files under `src/components/ui/*` unless the user explicitly asks to update the installed shadcn/ui components themselves.
+- Do not create wrapper layers or custom restyling abstractions around shadcn/ui just to bypass its component API; prefer composing the shadcn/ui components directly and keep any project-specific styling minimal and local to the feature component.
 - Before any Next.js-specific code change, read the relevant version-matched guide in `node_modules/next/dist/docs/`.
 - Never run a development server such as `pnpm dev` or `next dev`.
 
@@ -189,7 +192,7 @@ Application routes should use those query modules directly:
 src/app/
   page.tsx
   pdb/[pdbId]/page.tsx
-  api/search-suggestions/route.ts
+  api/search/route.ts
 ```
 
 UI components should be grouped by domain:
@@ -216,11 +219,11 @@ src/app/page.tsx?q=...
     -> db
 ```
 
-Autocomplete should use this call path:
+Search should use this call path:
 
 ```text
-src/components/search/SearchBox.tsx
-  -> /api/search-suggestions
+src/components/search/SearchHome.tsx
+  -> /api/search
     -> src/db/queries/search.ts
       -> db
 ```

@@ -1,106 +1,97 @@
 'use client'
 
-import { useState } from 'react'
 import type { PdbEntryChainPair } from '@/db/queries/entries'
 import { dispatchPdbChainPairFocus } from '@/components/pdb/chainPairFocusEvent'
 import { ResidueSequence } from '@/components/pdb/ResidueSequence'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
 type ChainPairAccordionProps = {
   chainPairs: PdbEntryChainPair[]
 }
 
-function toggleChainPair(openChainPairIds: Set<number>, chainPairId: number): Set<number> {
-  const nextOpenChainPairIds = new Set(openChainPairIds)
+function ChainPairHeader({ chainPair }: { chainPair: PdbEntryChainPair }) {
+  return (
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className="bg-[#dcebe3] text-[#174b37] hover:bg-[#dcebe3]">
+            Chain {chainPair.peptideChainId}
+          </Badge>
+          <Badge className="bg-[#f4d8dd] text-[#6a1f2f] hover:bg-[#f4d8dd]">
+            Chain {chainPair.receptorChainId}
+          </Badge>
+          <Badge variant="outline" className="border-[#d6dee3] bg-white text-[#4f5951]">
+            Entity {chainPair.receptorEntityId}
+          </Badge>
+        </div>
+      </div>
 
-  if (nextOpenChainPairIds.has(chainPairId)) {
-    nextOpenChainPairIds.delete(chainPairId)
-  } else {
-    nextOpenChainPairIds.add(chainPairId)
-  }
+      <div className="flex items-center">
+        <Button
+          type="button"
+          size="sm"
+          className="cursor-pointer bg-[#174b37] text-white hover:bg-[#0f3929]"
+          onClick={() => dispatchPdbChainPairFocus(chainPair)}
+        >
+          Focus
+        </Button>
+      </div>
+    </header>
+  )
+}
 
-  return nextOpenChainPairIds
+function SequenceSection({
+  title,
+  sequence,
+  residueNames,
+}: {
+  title: string
+  sequence: string
+  residueNames: string[]
+}) {
+  return (
+    <section className="min-w-0">
+      <h4 className="text-sm font-semibold text-[#2f3831]">{title}</h4>
+      <div className="mt-2">
+        <ResidueSequence sequence={sequence} residueNames={residueNames} />
+      </div>
+    </section>
+  )
 }
 
 export function ChainPairAccordion({ chainPairs }: ChainPairAccordionProps) {
-  const [openChainPairIds, setOpenChainPairIds] = useState<Set<number>>(() => new Set())
-
   if (chainPairs.length === 0) {
     return <p className="text-sm text-[#5f675f]">No curated chain pairs for this peptide.</p>
   }
 
   return (
     <div className="flex flex-col">
-      {chainPairs.map((chainPair, index) => {
-        const isOpen = openChainPairIds.has(chainPair.chainPairId)
-        const sequencePanelId = `chain-pair-sequences-${chainPair.chainPairId}`
+      {chainPairs.map((chainPair, index) => (
+        <div key={chainPair.chainPairId}>
+          {index > 0 ? (
+            <div className="py-8">
+              <Separator className="bg-[#d6dee3]" />
+            </div>
+          ) : null}
 
-        return (
-          <div key={chainPair.chainPairId}>
-            {index > 0 ? <hr className="my-4 border-[#aebbc3]" /> : null}
-            <article id={`chain-pair-${chainPair.chainPairId}`}>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap gap-2 text-sm">
-                  <span className="rounded bg-[#dcebe3] px-2 py-1 font-semibold text-[#174b37]">
-                    Chain {chainPair.peptideChainId}
-                  </span>
-                  <span className="rounded bg-[#f4d8dd] px-2 py-1 font-semibold text-[#6a1f2f]">
-                    Chain {chainPair.receptorChainId}
-                  </span>
-                  <span className="rounded border border-[#d6dee3] px-2 py-1 text-[#4f5951]">
-                    Entity {chainPair.receptorEntityId}
-                  </span>
-                </div>
+          <ChainPairHeader chainPair={chainPair} />
 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-controls={sequencePanelId}
-                    onClick={() => {
-                      setOpenChainPairIds((currentOpenChainPairIds) =>
-                        toggleChainPair(currentOpenChainPairIds, chainPair.chainPairId)
-                      )
-                    }}
-                    className="h-9 w-fit rounded-lg border border-[#9eabb2] bg-white px-3 text-sm font-semibold text-[#26312a] transition hover:bg-[#f5f7f9] focus:ring-2 focus:ring-[#1f6f54] focus:outline-none"
-                  >
-                    {isOpen ? 'Hide sequence' : 'Display sequence'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => dispatchPdbChainPairFocus(chainPair)}
-                    className="h-9 w-fit rounded-lg bg-[#174b37] px-3 text-sm font-semibold text-white transition hover:bg-[#0f3929] focus:ring-2 focus:ring-[#1f6f54] focus:outline-none"
-                  >
-                    Focus
-                  </button>
-                </div>
-              </div>
-
-              {isOpen ? (
-                <div id={sequencePanelId} className="mt-4 grid gap-4">
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-semibold text-[#2f3831]">Peptide residues</h4>
-                    <div className="mt-2">
-                      <ResidueSequence
-                        sequence={chainPair.peptideSequence}
-                        residueNames={chainPair.peptideResidueNames}
-                      />
-                    </div>
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-semibold text-[#2f3831]">Target residues</h4>
-                    <div className="mt-2">
-                      <ResidueSequence
-                        sequence={chainPair.receptorSequence}
-                        residueNames={chainPair.receptorResidueNames}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </article>
+          <div className="mt-5 grid gap-5">
+            <SequenceSection
+              title="Peptide residues"
+              sequence={chainPair.peptideSequence}
+              residueNames={chainPair.peptideResidueNames}
+            />
+            <SequenceSection
+              title="Target residues"
+              sequence={chainPair.receptorSequence}
+              residueNames={chainPair.receptorResidueNames}
+            />
           </div>
-        )
-      })}
+        </div>
+      ))}
     </div>
   )
 }

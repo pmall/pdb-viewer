@@ -7,6 +7,9 @@ import {
   PDB_CHAIN_PAIR_FOCUS_EVENT,
   type PdbChainPairFocusDetail,
 } from '@/components/pdb/chainPairFocusEvent'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const PEPTIDE_COLOR = '#1f8f5f'
 const TARGET_COLOR = '#d35a6a'
@@ -228,58 +231,69 @@ export function PdbStructureViewer({
 
   return (
     <aside className="flex flex-col gap-4">
-      <section className="border border-[#d6dee3] bg-white p-5">
-        <div className="flex flex-col gap-3">
-          <p className="text-sm font-semibold text-[#426352] uppercase">Structure viewer</p>
-          <h2 className="text-2xl font-semibold">{pdbId} assembly</h2>
-          <p className="text-sm leading-6 text-[#555f58]">
-            Selecting a curated pair fades the full structure to near-white, colors the peptide
-            green, and colors the target red.
+      <Card className="border border-[#d6dee3] bg-white py-0 shadow-none ring-0">
+        <CardHeader className="gap-3 border-b border-[#d6dee3] px-5 py-5">
+          <Badge variant="outline" className="w-fit uppercase">
+            Structure viewer
+          </Badge>
+          <div className="flex flex-col gap-3">
+            <CardTitle className="text-2xl font-semibold text-[#171717]">
+              {pdbId} assembly
+            </CardTitle>
+            <p className="text-sm leading-6 text-[#555f58]">
+              Selecting a curated pair fades the full structure to near-white, colors the peptide
+              green, and colors the target red.
+            </p>
+            <a
+              href={assemblyFileUrl}
+              className="text-sm text-[#0c5f46] underline-offset-4 hover:underline focus:ring-2 focus:ring-[#1f6f54] focus:outline-none"
+            >
+              {assemblyDownloadFileName}
+            </a>
+          </div>
+        </CardHeader>
+
+        <CardContent className="px-5 py-5">
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              size="lg"
+              className="cursor-pointer"
+              onClick={() => {
+                void loadAssembly()
+              }}
+              disabled={status === 'loading'}
+            >
+              {status === 'loading' ? 'Loading assembly...' : 'Load PDB assembly file'}
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              className="cursor-pointer"
+              onClick={resetStructure}
+              disabled={status !== 'ready'}
+            >
+              Reset colors
+            </Button>
+          </div>
+
+          <p className="mt-3 min-h-6 text-sm text-[#555f58]" aria-live="polite">
+            {status === 'idle' ? 'The assembly loads only after you request it.' : null}
+            {status === 'ready' && activeChainPair
+              ? `Focused peptide chain ${activeChainPair.peptideChainId} with target chain ${activeChainPair.receptorChainId}.`
+              : null}
+            {status === 'ready' && !activeChainPair ? 'Assembly loaded.' : null}
+            {status === 'error' ? (errorMessage ?? 'Assembly loading failed.') : null}
           </p>
-          <a
-            href={assemblyFileUrl}
-            className="text-sm text-[#0c5f46] underline-offset-4 hover:underline focus:ring-2 focus:ring-[#1f6f54] focus:outline-none"
-          >
-            {assemblyDownloadFileName}
-          </a>
-        </div>
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              void loadAssembly()
-            }}
-            disabled={status === 'loading'}
-            className="h-11 rounded-lg bg-[#174b37] px-4 text-sm font-semibold text-white transition hover:bg-[#0f3929] focus:ring-4 focus:ring-[#b7d5c7] focus:outline-none disabled:cursor-wait disabled:bg-[#7f9188]"
-          >
-            {status === 'loading' ? 'Loading assembly...' : 'Load PDB assembly file'}
-          </button>
-          <button
-            type="button"
-            onClick={resetStructure}
-            disabled={status !== 'ready'}
-            className="h-11 rounded-lg border border-[#9eabb2] bg-white px-4 text-sm font-semibold text-[#26312a] transition hover:bg-[#f5f7f9] focus:ring-4 focus:ring-[#b7d5c7] focus:outline-none disabled:cursor-not-allowed disabled:text-[#8a958f]"
-          >
-            Reset colors
-          </button>
-        </div>
-
-        <p className="mt-3 min-h-6 text-sm text-[#555f58]" aria-live="polite">
-          {status === 'idle' ? 'The assembly loads only after you request it.' : null}
-          {status === 'ready' && activeChainPair
-            ? `Focused peptide chain ${activeChainPair.peptideChainId} with target chain ${activeChainPair.receptorChainId}.`
-            : null}
-          {status === 'ready' && !activeChainPair ? 'Assembly loaded.' : null}
-          {status === 'error' ? (errorMessage ?? 'Assembly loading failed.') : null}
-        </p>
-
-        <div
-          ref={containerRef}
-          className="mt-5 h-[26rem] w-full overflow-hidden border border-[#c7d1d8] bg-white sm:h-[34rem] lg:h-[42rem]"
-          aria-label={`${pdbId} molecular structure viewer`}
-        />
-      </section>
+          <div
+            ref={containerRef}
+            className="mt-5 h-[26rem] w-full overflow-hidden rounded-xl border border-[#c7d1d8] bg-white sm:h-[34rem] lg:h-[42rem]"
+            aria-label={`${pdbId} molecular structure viewer`}
+          />
+        </CardContent>
+      </Card>
     </aside>
   )
 }

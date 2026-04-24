@@ -3,6 +3,17 @@
 import Link from 'next/link'
 import { useDeferredValue, useState } from 'react'
 import useSWR from 'swr'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const SEARCH_API_PATH = '/api/search'
 const MIN_SEARCH_QUERY_LENGTH = 3
@@ -106,9 +117,12 @@ export function SearchHome() {
     <section className="min-h-screen bg-[#f5f7f9] text-[#171717]">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12">
         <header className="flex flex-col gap-5 border-b border-[#d2dae0] pb-8">
-          <p className="text-sm font-semibold text-[#426352] uppercase">
+          <Badge
+            variant="outline"
+            className="w-fit border-[#c8d8cf] bg-[#eef5f1] font-semibold text-[#426352] uppercase"
+          >
             PDB peptide target search
-          </p>
+          </Badge>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-end">
             <div className="flex flex-col gap-4">
               <h1 className="max-w-4xl text-4xl leading-tight font-semibold sm:text-5xl">
@@ -124,104 +138,106 @@ export function SearchHome() {
           </div>
         </header>
 
-        <div className="flex flex-col gap-4">
-          <label htmlFor="pdb-search" className="text-base font-semibold">
-            Search target context
-          </label>
-          <input
-            id="pdb-search"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Try HLA, insulin, P01308, or kinase"
-            className="h-14 w-full rounded-lg border border-[#aab8c2] bg-white px-4 text-lg transition outline-none focus:border-[#1f6f54] focus:ring-4 focus:ring-[#b7d5c7]"
-          />
-          <p className="min-h-6 text-sm text-[#555a52]" aria-live="polite">
-            {resultCountLabel}
-          </p>
-        </div>
+        <Card className="border border-[#d2dae0] bg-white py-0 shadow-none ring-0">
+          <CardHeader className="gap-4 px-5 py-5">
+            <CardTitle className="text-base font-semibold">Search target context</CardTitle>
+            <label htmlFor="pdb-search" className="sr-only">
+              Search target context
+            </label>
+            <Input
+              id="pdb-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Try HLA, insulin, P01308, or kinase"
+              className="h-14 border-[#aab8c2] bg-white px-4 text-lg focus-visible:border-[#1f6f54] focus-visible:ring-[#b7d5c7]"
+            />
+            <p className="min-h-6 text-sm text-[#555a52]" aria-live="polite">
+              {resultCountLabel}
+            </p>
+          </CardHeader>
+        </Card>
 
         {canSearch && results.length > 0 ? (
-          <div className="overflow-x-auto border border-[#d2dae0] bg-white">
-            <table className="w-full min-w-[960px] border-collapse text-left text-sm">
-              <thead className="bg-[#e8edf0] text-xs text-[#384139] uppercase">
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    PDB
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Matched target context
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Title
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Resolution
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Dates
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e1e6ea]">
-                {results.map((result) => (
-                  <tr key={result.pdbId}>
-                    <td className="px-4 py-4 align-top font-semibold">
-                      <Link
-                        href={`/pdb/${result.pdbId}`}
-                        className="rounded-sm text-[#0c5f46] underline-offset-4 hover:underline focus:ring-2 focus:ring-[#1f6f54] focus:outline-none"
-                      >
-                        {result.pdbId}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="flex max-w-lg flex-col gap-3">
-                        {result.matches.map((match) => (
-                          <div
-                            key={match.targetEntityId}
-                            className="flex flex-col gap-1 border-l-2 border-[#b64253] pl-3"
-                          >
-                            <span className="font-medium">
-                              {match.targetEntityName ?? 'Unnamed target'}
-                            </span>
-                            <span className="text-xs text-[#62675f]">
-                              Entity {match.targetEntityId}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <span className="line-clamp-3 max-w-md">
-                        {result.title ?? 'Untitled entry'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      {formatResolution(result.bestResolution)}
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="flex min-w-36 flex-col gap-1">
-                        <span>Deposited {formatDate(result.depositionDate)}</span>
-                        <span>Released {formatDate(result.initialReleaseDate)}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Card className="border border-[#d2dae0] bg-white py-0 shadow-none ring-0">
+            <CardContent className="px-0 py-0">
+              <Table className="min-w-[960px] border-collapse text-left text-sm">
+                <TableHeader className="bg-[#e8edf0] text-xs text-[#384139] uppercase">
+                  <TableRow className="border-[#d2dae0] hover:bg-transparent">
+                    <TableHead className="px-4 py-3 font-semibold">PDB</TableHead>
+                    <TableHead className="px-4 py-3 font-semibold">
+                      Matched target context
+                    </TableHead>
+                    <TableHead className="px-4 py-3 font-semibold">Title</TableHead>
+                    <TableHead className="px-4 py-3 font-semibold">Resolution</TableHead>
+                    <TableHead className="px-4 py-3 font-semibold">Dates</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {results.map((result) => (
+                    <TableRow key={result.pdbId} className="border-[#e1e6ea] hover:bg-[#f8fafb]">
+                      <TableCell className="px-4 py-4 align-top font-semibold">
+                        <Link
+                          href={`/pdb/${result.pdbId}`}
+                          className="rounded-sm text-[#0c5f46] underline-offset-4 hover:underline focus:ring-2 focus:ring-[#1f6f54] focus:outline-none"
+                        >
+                          {result.pdbId}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="px-4 py-4 align-top whitespace-normal">
+                        <div className="flex max-w-lg flex-col gap-3">
+                          {result.matches.map((match) => (
+                            <div
+                              key={match.targetEntityId}
+                              className="flex flex-col gap-2 border-l-2 border-[#b64253] pl-3"
+                            >
+                              <span className="font-medium">
+                                {match.targetEntityName ?? 'Unnamed target'}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="w-fit border-[#f0c5ce] bg-[#fdf2f4] text-[#8a3043]"
+                              >
+                                Entity {match.targetEntityId}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4 py-4 align-top whitespace-normal">
+                        <span className="line-clamp-3 max-w-md">
+                          {result.title ?? 'Untitled entry'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-4 py-4 align-top">
+                        {formatResolution(result.bestResolution)}
+                      </TableCell>
+                      <TableCell className="px-4 py-4 align-top whitespace-normal">
+                        <div className="flex min-w-36 flex-col gap-1">
+                          <span>Deposited {formatDate(result.depositionDate)}</span>
+                          <span>Released {formatDate(result.initialReleaseDate)}</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         ) : null}
 
         {hasEmptyResults ? (
-          <div className="border border-[#d2dae0] bg-white px-5 py-8">
-            <div className="flex max-w-2xl flex-col gap-3">
-              <h2 className="text-xl font-semibold">No matching PDB entries</h2>
-              <p className="leading-7 text-[#4f514d]">
+          <Card className="border border-[#d2dae0] bg-white shadow-none ring-0">
+            <CardHeader className="px-5 py-5">
+              <CardTitle className="text-xl font-semibold">No matching PDB entries</CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 pb-8">
+              <p className="max-w-2xl leading-7 text-[#4f514d]">
                 No entries matched {normalizedQuery}. Try a broader target name, organism, keyword,
                 GO term, PDB ID, or UniProt accession.
               </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ) : null}
       </div>
     </section>
