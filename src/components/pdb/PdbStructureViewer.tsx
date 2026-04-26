@@ -15,6 +15,8 @@ const PEPTIDE_COLOR = '#1f8f5f'
 const TARGET_COLOR = '#d35a6a'
 const CONTEXT_COLOR = '#fbfcfc'
 const RCSB_DOWNLOAD_BASE_URL = 'https://files.rcsb.org/download'
+const RCSB_STRUCTURE_BASE_URL = 'https://www.rcsb.org/structure'
+const RCSB_3D_VIEW_BASE_URL = 'https://www.rcsb.org/3d-view'
 
 type PdbStructureViewerProps = {
   pdbId: string
@@ -45,6 +47,16 @@ function getAssemblyDownloadFileName(assemblyFileName: string): string {
   }
 
   return `${assemblyFileName}.cif.gz`
+}
+
+function getRcsbAssemblyUrl(pdbId: string, assemblyFileName: string): string {
+  const assemblyId = assemblyFileName.match(/assembly(\d+)/i)?.[1]
+
+  if (assemblyId) {
+    return `${RCSB_3D_VIEW_BASE_URL}/${pdbId}/${assemblyId}`
+  }
+
+  return `${RCSB_STRUCTURE_BASE_URL}/${pdbId}`
 }
 
 function chainSelection(chainId: string): string {
@@ -128,6 +140,7 @@ export function PdbStructureViewer({
   )
   const assemblyDownloadFileName = getAssemblyDownloadFileName(assemblyFileName)
   const assemblyFileUrl = `${RCSB_DOWNLOAD_BASE_URL}/${assemblyDownloadFileName}`
+  const rcsbAssemblyUrl = getRcsbAssemblyUrl(pdbId, assemblyFileName)
 
   useEffect(() => {
     let resizeObserver: ResizeObserver | null = null
@@ -318,10 +331,12 @@ export function PdbStructureViewer({
               green, and colors the target red.
             </p>
             <a
-              href={assemblyFileUrl}
+              href={rcsbAssemblyUrl}
+              target="_blank"
+              rel="noreferrer"
               className="text-sm text-[#0c5f46] underline-offset-4 hover:underline focus:ring-2 focus:ring-[#1f6f54] focus:outline-none"
             >
-              {assemblyDownloadFileName}
+              View source assembly at RCSB PDB
             </a>
           </div>
         </CardHeader>
