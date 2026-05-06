@@ -152,6 +152,9 @@ function PeptideEntity({ peptide }: { peptide: PdbEntryPeptide }) {
 }
 
 export function PdbEntryDetails({ entryPage }: PdbEntryDetailsProps) {
+  const defaultOpenPeptideEntities =
+    entryPage.peptides.length === 1 ? [entryPage.peptides[0].entityId] : []
+
   return (
     <div className="flex flex-col gap-6">
       <EntryMetadata entry={entryPage.entry} />
@@ -162,7 +165,7 @@ export function PdbEntryDetails({ entryPage }: PdbEntryDetailsProps) {
             {entryPage.peptides.length} {entryPage.peptides.length === 1 ? 'entity' : 'entities'}
           </Badge>
         </div>
-        <Accordion type="multiple" className="gap-4">
+        <Accordion type="multiple" defaultValue={defaultOpenPeptideEntities} className="gap-4">
           {entryPage.peptides.map((peptide) => (
             <AccordionItem key={peptide.entityId} value={peptide.entityId} className="border-0">
               <Card className="overflow-hidden border border-[#d6dee3] bg-white py-0 shadow-none ring-0">

@@ -2,9 +2,16 @@ import 'server-only'
 
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { entriesMetadata, searchTerms, searchTermsTargets, targetsMetadata } from '@/db/schema'
+import {
+  entries,
+  entriesMetadata,
+  searchTerms,
+  searchTermsTargets,
+  targetsMetadata,
+} from '@/db/schema'
 
 const SEARCH_RESULT_LIMIT = 50
+const RANDOM_ENTRY_LIMIT = 4
 const MIN_SEARCH_QUERY_LENGTH = 3
 const MAX_SEARCH_QUERY_LENGTH = 120
 
@@ -20,6 +27,11 @@ export type PdbSearchResult = {
   depositionDate: string | null
   initialReleaseDate: string | null
   matches: PdbSearchMatch[]
+}
+
+export type RandomPdbEntry = {
+  pdbId: string
+  title: string | null
 }
 
 function normalizeSearchQuery(query: string): string {
@@ -138,4 +150,16 @@ export async function searchPdbEntries(query: string): Promise<PdbSearchResult[]
   }
 
   return Array.from(entriesByPdbId.values())
+}
+
+export async function getRandomPdbEntries(): Promise<RandomPdbEntry[]> {
+  return db
+    .select({
+      pdbId: entries.pdbId,
+      title: entriesMetadata.title,
+    })
+    .from(entries)
+    .leftJoin(entriesMetadata, eq(entries.pdbId, entriesMetadata.pdbId))
+    .orderBy(sql`random()`)
+    .limit(RANDOM_ENTRY_LIMIT)
 }

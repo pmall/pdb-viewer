@@ -19,6 +19,15 @@ const SEARCH_API_PATH = '/api/search'
 const MIN_SEARCH_QUERY_LENGTH = 3
 const MAX_SEARCH_QUERY_LENGTH = 120
 
+type SearchHomeProps = {
+  randomEntries: RandomEntryLink[]
+}
+
+type RandomEntryLink = {
+  pdbId: string
+  title: string | null
+}
+
 type SearchResult = {
   pdbId: string
   title: string | null
@@ -69,7 +78,7 @@ async function fetchSearchResults([path, query]: SearchKey): Promise<SearchRespo
   return (await response.json()) as SearchResponse
 }
 
-export function SearchHome() {
+export function SearchHome({ randomEntries }: SearchHomeProps) {
   const [query, setQuery] = useState('')
   const normalizedQuery = normalizeQuery(query)
   const deferredQuery = useDeferredValue(normalizedQuery)
@@ -149,12 +158,28 @@ export function SearchHome() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Try HLA, insulin, P01308, or kinase"
+              placeholder="Try HLA, insulin, kinase, or A0MMD0"
               className="h-14 border-[#aab8c2] bg-white px-4 text-lg focus-visible:border-[#1f6f54] focus-visible:ring-[#b7d5c7]"
             />
             <p className="min-h-6 text-sm text-[#555a52]" aria-live="polite">
               {resultCountLabel}
             </p>
+            {randomEntries.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-[#4f514d]">Random entries</span>
+                {randomEntries.map((entry) => (
+                  <Badge
+                    key={entry.pdbId}
+                    asChild
+                    variant="outline"
+                    className="border-[#d6dee3] bg-white text-[#0c5f46]"
+                    title={entry.title ?? undefined}
+                  >
+                    <Link href={`/pdb/${entry.pdbId}`}>{entry.pdbId}</Link>
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
           </CardHeader>
         </Card>
 
