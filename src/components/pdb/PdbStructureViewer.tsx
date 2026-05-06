@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Component, Stage, StructureComponent } from 'ngl'
+import type { Component, Selection, Stage, StructureComponent } from 'ngl'
 import type { PdbEntryChainPair } from '@/db/queries/entries'
 import {
   PDB_CHAIN_PAIR_FOCUS_EVENT,
@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const PEPTIDE_COLOR = '#1f8f5f'
 const TARGET_COLOR = '#d35a6a'
+const PEPTIDE_BINDING_COLOR = '#f2b01f'
+const TARGET_BINDING_COLOR = '#2764c9'
 const CONTEXT_COLOR = '#fbfcfc'
 const RCSB_DOWNLOAD_BASE_URL = 'https://files.rcsb.org/download'
 const RCSB_STRUCTURE_BASE_URL = 'https://www.rcsb.org/structure'
@@ -31,11 +33,27 @@ type StructureChainIdentifier = {
   chainid: string
 }
 
+type StructureResidueIdentifier = {
+  chainname: string
+  resno: number
+  inscode: string
+}
+
 type ChainPairSelections = {
   peptideSelection: string | null
   receptorSelection: string | null
+  peptideBindingSelection: string | null
+  receptorBindingSelection: string | null
   combinedSelection: string | null
+  bindingSelection: string | null
 }
+
+type ResolvedChainSelection = {
+  chainNames: string[]
+  selection: string | null
+}
+
+type SelectionConstructor = new (selection?: string) => Selection
 
 function hasKnownStructureExtension(fileName: string): boolean {
   return /\.(bcif|cif|ent|mmtf|pdb)(\.gz)?$/i.test(fileName)
@@ -72,20 +90,26 @@ function joinChainSelections(chainNames: string[]): string | null {
 function resolveCuratedChainSelection(
   structureChains: StructureChainIdentifier[],
   curatedChainId: string
-): string | null {
+): ResolvedChainSelection {
   const chainIdMatches = structureChains
     .filter((chain) => chain.chainid === curatedChainId)
     .map((chain) => chain.chainname)
 
   if (chainIdMatches.length > 0) {
-    return joinChainSelections(chainIdMatches)
+    return {
+      chainNames: Array.from(new Set(chainIdMatches)),
+      selection: joinChainSelections(chainIdMatches),
+    }
   }
 
   const chainNameMatches = structureChains
     .filter((chain) => chain.chainname === curatedChainId)
     .map((chain) => chain.chainname)
 
-  return joinChainSelections(chainNameMatches)
+  return {
+    chainNames: Array.from(new Set(chainNameMatches)),
+    selection: joinChainSelections(chainNameMatches),
+  }
 }
 
 function getStructureChainIdentifiers(component: StructureComponent): StructureChainIdentifier[] {
@@ -101,20 +125,151 @@ function getStructureChainIdentifiers(component: StructureComponent): StructureC
   return structureChains
 }
 
+function formatResidueSelectionNumber(resno: number): string {
+  return String(resno)
+}
+
+function sanitizeSelectionValue(value: string): string {
+  return value.replaceAll("'", '')
+}
+
+function residueSelectionToken(residue: StructureResidueIdentifier): string {
+  const inscode = residue.inscode ? `^${sanitizeSelectionValue(residue.inscode)}` : ''
+
+  return `${formatResidueSelectionNumber(residue.resno)}${inscode}:${sanitizeSelectionValue(
+    residue.chainname
+  )}`
+}
+
+function residueRangeSelectionToken(
+  firstResidue: StructureResidueIdentifier,
+  lastResidue: StructureResidueIdentifier
+): string {
+  return `${formatResidueSelectionNumber(firstResidue.resno)}-${formatResidueSelectionNumber(
+    lastResidue.resno
+  )}:${sanitizeSelectionValue(firstResidue.chainname)}`
+}
+
+function compactResidueSelectionTokens(residues: StructureResidueIdentifier[]): string[] {
+  const selectionTokens: string[] = []
+  let rangeStart: StructureResidueIdentifier | null = null
+  let rangeEnd: StructureResidueIdentifier | null = null
+
+  function flushRange() {
+    if (!rangeStart || !rangeEnd) {
+      return
+    }
+
+    selectionTokens.push(
+      rangeStart === rangeEnd
+        ? residueSelectionToken(rangeStart)
+        : residueRangeSelectionToken(rangeStart, rangeEnd)
+    )
+    rangeStart = null
+    rangeEnd = null
+  }
+
+  for (const residue of residues) {
+    if (residue.inscode) {
+      flushRange()
+      selectionTokens.push(residueSelectionToken(residue))
+      continue
+    }
+
+    if (
+      rangeStart &&
+      rangeEnd &&
+      residue.chainname === rangeEnd.chainname &&
+      residue.resno === rangeEnd.resno + 1
+    ) {
+      rangeEnd = residue
+      continue
+    }
+
+    flushRange()
+    rangeStart = residue
+    rangeEnd = residue
+  }
+
+  flushRange()
+
+  return selectionTokens
+}
+
+function resolveBindingSelection(
+  component: StructureComponent,
+  SelectionClass: SelectionConstructor,
+  chainNames: string[],
+  bindingStart: number,
+  bindingStop: number
+): string | null {
+  const selectionTokens: string[] = []
+
+  for (const chainName of chainNames) {
+    const residues: StructureResidueIdentifier[] = []
+
+    component.structure.eachResidue(
+      (residue) => {
+        residues.push({
+          chainname: residue.chainname,
+          resno: residue.resno,
+          inscode: residue.inscode,
+        })
+      },
+      new SelectionClass(chainSelection(chainName))
+    )
+
+    const bindingResidues = residues.slice(bindingStart - 1, bindingStop)
+    selectionTokens.push(...compactResidueSelectionTokens(bindingResidues))
+  }
+
+  return selectionTokens.length > 0 ? selectionTokens.join(' or ') : null
+}
+
 function resolveChainPairSelections(
   component: StructureComponent,
-  chainPair: PdbEntryChainPair
+  chainPair: PdbEntryChainPair,
+  SelectionClass: SelectionConstructor
 ): ChainPairSelections {
   const structureChains = getStructureChainIdentifiers(component)
-  const peptideSelection = resolveCuratedChainSelection(structureChains, chainPair.peptideChainId)
-  const receptorSelection = resolveCuratedChainSelection(structureChains, chainPair.receptorChainId)
+  const peptideChainSelection = resolveCuratedChainSelection(
+    structureChains,
+    chainPair.peptideChainId
+  )
+  const receptorChainSelection = resolveCuratedChainSelection(
+    structureChains,
+    chainPair.receptorChainId
+  )
+  const peptideSelection = peptideChainSelection.selection
+  const receptorSelection = receptorChainSelection.selection
+  const peptideBindingSelection = resolveBindingSelection(
+    component,
+    SelectionClass,
+    peptideChainSelection.chainNames,
+    chainPair.peptideBindingStart,
+    chainPair.peptideBindingStop
+  )
+  const receptorBindingSelection = resolveBindingSelection(
+    component,
+    SelectionClass,
+    receptorChainSelection.chainNames,
+    chainPair.receptorBindingStart,
+    chainPair.receptorBindingStop
+  )
   const combinedSelection =
     peptideSelection && receptorSelection ? `${peptideSelection} or ${receptorSelection}` : null
+  const bindingSelection =
+    peptideBindingSelection && receptorBindingSelection
+      ? `${peptideBindingSelection} or ${receptorBindingSelection}`
+      : (peptideBindingSelection ?? receptorBindingSelection)
 
   return {
     peptideSelection,
     receptorSelection,
+    peptideBindingSelection,
+    receptorBindingSelection,
     combinedSelection,
+    bindingSelection,
   }
 }
 
@@ -247,10 +402,15 @@ export function PdbStructureViewer({
         return
       }
 
-      const { peptideSelection, receptorSelection, combinedSelection } = resolveChainPairSelections(
-        component,
-        chainPair
-      )
+      const { Selection: NglSelection } = await import('ngl')
+      const {
+        peptideSelection,
+        receptorSelection,
+        peptideBindingSelection,
+        receptorBindingSelection,
+        combinedSelection,
+        bindingSelection,
+      } = resolveChainPairSelections(component, chainPair, NglSelection)
 
       if (!peptideSelection || !receptorSelection || !combinedSelection) {
         setErrorMessage('The loaded assembly does not contain both curated chains for this pair.')
@@ -271,28 +431,46 @@ export function PdbStructureViewer({
         sele: peptideSelection,
         colorScheme: 'uniform',
         colorValue: PEPTIDE_COLOR,
-        opacity: 1,
+        opacity: 0.55,
+        transparent: true,
       })
       component.addRepresentation('cartoon', {
         sele: receptorSelection,
         colorScheme: 'uniform',
         colorValue: TARGET_COLOR,
-        opacity: 1,
+        opacity: 0.55,
+        transparent: true,
       })
-      component.addRepresentation('ball+stick', {
-        sele: peptideSelection,
-        colorScheme: 'uniform',
-        colorValue: PEPTIDE_COLOR,
-        radiusScale: 0.62,
-      })
-      component.addRepresentation('ball+stick', {
-        sele: receptorSelection,
-        colorScheme: 'uniform',
-        colorValue: TARGET_COLOR,
-        radiusScale: 0.62,
-      })
+      if (peptideBindingSelection) {
+        component.addRepresentation('cartoon', {
+          sele: peptideBindingSelection,
+          colorScheme: 'uniform',
+          colorValue: PEPTIDE_BINDING_COLOR,
+          opacity: 1,
+        })
+        component.addRepresentation('ball+stick', {
+          sele: peptideBindingSelection,
+          colorScheme: 'uniform',
+          colorValue: PEPTIDE_BINDING_COLOR,
+          radiusScale: 0.7,
+        })
+      }
+      if (receptorBindingSelection) {
+        component.addRepresentation('cartoon', {
+          sele: receptorBindingSelection,
+          colorScheme: 'uniform',
+          colorValue: TARGET_BINDING_COLOR,
+          opacity: 1,
+        })
+        component.addRepresentation('ball+stick', {
+          sele: receptorBindingSelection,
+          colorScheme: 'uniform',
+          colorValue: TARGET_BINDING_COLOR,
+          radiusScale: 0.7,
+        })
+      }
       setActiveChainPairId(chainPair.chainPairId)
-      component.autoView(combinedSelection, 650)
+      component.autoView(bindingSelection ?? combinedSelection, 650)
     },
     [loadAssembly]
   )
@@ -327,8 +505,8 @@ export function PdbStructureViewer({
               {pdbId} assembly
             </CardTitle>
             <p className="text-sm leading-6 text-[#555f58]">
-              Selecting a curated pair fades the full structure to near-white, colors the peptide
-              green, and colors the target red.
+              Selecting a curated pair fades the full structure to near-white, colors the full
+              chains, and highlights the binding residues.
             </p>
             <a
               href={rcsbAssemblyUrl}
@@ -370,7 +548,7 @@ export function PdbStructureViewer({
             {status === 'idle' ? 'The assembly loads only after you request it.' : null}
             {status === 'ready' && errorMessage ? errorMessage : null}
             {status === 'ready' && !errorMessage && activeChainPair
-              ? `Focused peptide chain ${activeChainPair.peptideChainId} with target chain ${activeChainPair.receptorChainId}.`
+              ? `Focused peptide chain ${activeChainPair.peptideChainId} binding ${activeChainPair.peptideBindingStart}-${activeChainPair.peptideBindingStop} with target chain ${activeChainPair.receptorChainId} binding ${activeChainPair.receptorBindingStart}-${activeChainPair.receptorBindingStop}.`
               : null}
             {status === 'ready' && !errorMessage && !activeChainPair ? 'Assembly loaded.' : null}
             {status === 'error' ? (errorMessage ?? 'Assembly loading failed.') : null}

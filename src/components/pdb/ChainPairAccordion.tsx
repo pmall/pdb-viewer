@@ -46,16 +46,30 @@ function SequenceSection({
   title,
   sequence,
   residueNames,
+  bindingStart,
+  bindingStop,
 }: {
   title: string
   sequence: string
   residueNames: string[]
+  bindingStart: number
+  bindingStop: number
 }) {
   return (
     <section className="min-w-0">
-      <h4 className="text-sm font-semibold text-[#2f3831]">{title}</h4>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-sm font-semibold text-[#2f3831]">{title}</h4>
+        <Badge variant="outline" className="border-[#d6dee3] bg-white text-[#4f5951]">
+          Binding {bindingStart}-{bindingStop}
+        </Badge>
+      </div>
       <div className="mt-2">
-        <ResidueSequence sequence={sequence} residueNames={residueNames} />
+        <ResidueSequence
+          sequence={sequence}
+          residueNames={residueNames}
+          bindingStart={bindingStart}
+          bindingStop={bindingStop}
+        />
       </div>
     </section>
   )
@@ -73,11 +87,15 @@ function ChainPairCard({ chainPair }: { chainPair: PdbEntryChainPair }) {
             title="Peptide residues"
             sequence={chainPair.peptideSequence}
             residueNames={chainPair.peptideResidueNames}
+            bindingStart={chainPair.peptideBindingStart}
+            bindingStop={chainPair.peptideBindingStop}
           />
           <SequenceSection
             title="Target residues"
             sequence={chainPair.receptorSequence}
             residueNames={chainPair.receptorResidueNames}
+            bindingStart={chainPair.receptorBindingStart}
+            bindingStop={chainPair.receptorBindingStop}
           />
         </div>
       </CardContent>

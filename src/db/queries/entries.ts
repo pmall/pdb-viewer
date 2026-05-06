@@ -31,10 +31,14 @@ export type PdbEntryChainPair = {
   peptideChainId: string
   peptideSequence: string
   peptideResidueNames: string[]
+  peptideBindingStart: number
+  peptideBindingStop: number
   receptorEntityId: string
   receptorChainId: string
   receptorSequence: string
   receptorResidueNames: string[]
+  receptorBindingStart: number
+  receptorBindingStop: number
   receptorAccessions: PdbEntryUniprotAccession[]
 }
 
@@ -100,7 +104,7 @@ function mapUniprotAccession(
 ): PdbEntryUniprotAccession {
   return {
     accession,
-    reviewed: metadata ? metadata.reviewed === 1 : null,
+    reviewed: metadata?.reviewed ?? null,
     recommendedName: metadata?.recommendedName ?? null,
     geneNames: metadata ? parseStringArray(metadata.geneNamesJson) : [],
     organismScientificName: metadata?.organismScientificName ?? null,
@@ -210,10 +214,14 @@ export async function getPdbEntryPage(pdbId: string): Promise<PdbEntryPage | nul
       peptideChainId: chainPairRow.peptideChainId,
       peptideSequence: chainPairRow.peptideSequence,
       peptideResidueNames: parseStringArray(chainPairRow.peptideResidueNamesJson),
+      peptideBindingStart: chainPairRow.peptideBindingStart,
+      peptideBindingStop: chainPairRow.peptideBindingStop,
       receptorEntityId: chainPairRow.receptorEntityId,
       receptorChainId: chainPairRow.receptorChainId,
       receptorSequence: chainPairRow.receptorSequence,
       receptorResidueNames: parseStringArray(chainPairRow.receptorResidueNamesJson),
+      receptorBindingStart: chainPairRow.receptorBindingStart,
+      receptorBindingStop: chainPairRow.receptorBindingStop,
       receptorAccessions: targetAccessionsByEntityId.get(chainPairRow.receptorEntityId) ?? [],
     })
 

@@ -5,6 +5,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 type ResidueSequenceProps = {
   sequence: string
   residueNames: string[]
+  bindingStart?: number
+  bindingStop?: number
 }
 
 type TooltipState = {
@@ -27,7 +29,12 @@ function getTooltipPosition(element: HTMLElement): Pick<TooltipState, 'x' | 'y'>
   }
 }
 
-export function ResidueSequence({ sequence, residueNames }: ResidueSequenceProps) {
+export function ResidueSequence({
+  sequence,
+  residueNames,
+  bindingStart,
+  bindingStop,
+}: ResidueSequenceProps) {
   const tooltipId = useId()
   const sequenceRef = useRef<HTMLElement>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
@@ -78,7 +85,13 @@ export function ResidueSequence({ sequence, residueNames }: ResidueSequenceProps
           const residueName = residueNames[index] ?? 'Unknown residue'
           const residueLabel = getResidueLabel(index, residue, residueName)
           const residueKey = `${residue}-${index}`
+          const residuePosition = index + 1
           const isSelected = tooltip?.residueKey === residueKey
+          const isBindingResidue =
+            bindingStart !== undefined &&
+            bindingStop !== undefined &&
+            residuePosition >= bindingStart &&
+            residuePosition <= bindingStop
 
           return (
             <button
@@ -95,7 +108,11 @@ export function ResidueSequence({ sequence, residueNames }: ResidueSequenceProps
                   ...getTooltipPosition(event.currentTarget),
                 })
               }}
-              className="min-w-4 rounded border border-transparent px-0.5 text-center font-mono hover:border-[#8eb4a2] hover:bg-white focus:border-[#8eb4a2] focus:bg-white focus:outline-none"
+              className={
+                isBindingResidue
+                  ? 'min-w-4 rounded border border-[#d99a1f] bg-[#fff1bf] px-0.5 text-center font-mono text-[#3b2a04] hover:border-[#9b6900] hover:bg-[#ffe489] focus:border-[#9b6900] focus:bg-[#ffe489] focus:outline-none'
+                  : 'min-w-4 rounded border border-transparent px-0.5 text-center font-mono hover:border-[#8eb4a2] hover:bg-white focus:border-[#8eb4a2] focus:bg-white focus:outline-none'
+              }
             >
               {residue}
             </button>

@@ -1,8 +1,9 @@
 import {
-  bigint,
+  boolean,
   doublePrecision,
   foreignKey,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -37,16 +38,20 @@ export const entriesMetadata = pgTable(
 export const chainPairs = pgTable(
   'chain_pairs',
   {
-    chainPairId: bigint('chain_pair_id', { mode: 'number' }).primaryKey().notNull(),
+    chainPairId: integer('chain_pair_id').primaryKey().notNull(),
     pdbId: text('pdb_id').notNull(),
     peptideEntityId: text('peptide_entity_id').notNull(),
     peptideChainId: text('peptide_chain_id').notNull(),
     peptideSequence: text('peptide_sequence').notNull(),
     peptideResidueNamesJson: text('peptide_residue_names_json').notNull(),
+    peptideBindingStart: integer('peptide_binding_start').notNull(),
+    peptideBindingStop: integer('peptide_binding_stop').notNull(),
     receptorEntityId: text('receptor_entity_id').notNull(),
     receptorChainId: text('receptor_chain_id').notNull(),
     receptorSequence: text('receptor_sequence').notNull(),
     receptorResidueNamesJson: text('receptor_residue_names_json').notNull(),
+    receptorBindingStart: integer('receptor_binding_start').notNull(),
+    receptorBindingStop: integer('receptor_binding_stop').notNull(),
   },
   (table) => [
     index('idx_chain_pairs__pdb_id_peptide_entity_id').using(
@@ -89,11 +94,11 @@ export const chainPairs = pgTable(
 
 export const uniprotMetadata = pgTable('uniprot_metadata', {
   accession: text().primaryKey().notNull(),
-  reviewed: bigint({ mode: 'number' }).notNull(),
+  reviewed: boolean().notNull(),
   recommendedName: text('recommended_name').notNull(),
   geneNamesJson: text('gene_names_json').notNull(),
   organismScientificName: text('organism_scientific_name').notNull(),
-  taxonomyId: bigint('taxonomy_id', { mode: 'number' }),
+  taxonomyId: integer('taxonomy_id'),
   functionText: text('function_text').notNull(),
   subcellularLocationsJson: text('subcellular_locations_json').notNull(),
   keywordsJson: text('keywords_json').notNull(),
@@ -105,10 +110,10 @@ export const uniprotMetadata = pgTable('uniprot_metadata', {
 export const searchTerms = pgTable(
   'search_terms',
   {
-    searchTermId: bigint('search_term_id', { mode: 'number' }).primaryKey().notNull(),
+    searchTermId: integer('search_term_id').primaryKey().notNull(),
     term: text().notNull(),
     termKind: text('term_kind').notNull(),
-    rankWeight: bigint('rank_weight', { mode: 'number' }).notNull(),
+    rankWeight: integer('rank_weight').notNull(),
   },
   (table) => [
     index('idx_search_terms__term_kind').using(
@@ -126,12 +131,8 @@ export const searchTerms = pgTable(
 export const searchTermsTargets = pgTable(
   'search_terms_targets',
   {
-    searchTermsTargetId: bigint('search_terms_target_id', {
-      mode: 'number',
-    })
-      .primaryKey()
-      .notNull(),
-    searchTermId: bigint('search_term_id', { mode: 'number' }).notNull(),
+    searchTermsTargetId: integer('search_terms_target_id').primaryKey().notNull(),
+    searchTermId: integer('search_term_id').notNull(),
     pdbId: text('pdb_id').notNull(),
     entityId: text('entity_id').notNull(),
   },
@@ -143,7 +144,7 @@ export const searchTermsTargets = pgTable(
     ),
     index('idx_search_terms_targets__search_term_id').using(
       'btree',
-      table.searchTermId.asc().nullsLast().op('int8_ops')
+      table.searchTermId.asc().nullsLast().op('int4_ops')
     ),
     foreignKey({
       columns: [table.searchTermId],
@@ -262,7 +263,7 @@ export const peptidesMetadata = pgTable(
     taxonomyIdsJson: text('taxonomy_ids_json').notNull(),
     accessionsJson: text('accessions_json').notNull(),
     polymerType: text('polymer_type').notNull(),
-    sequenceLength: bigint('sequence_length', { mode: 'number' }),
+    sequenceLength: integer('sequence_length'),
   },
   (table) => [
     index('idx_peptides_metadata__entity_name').using(
@@ -291,7 +292,7 @@ export const targetsMetadata = pgTable(
     taxonomyIdsJson: text('taxonomy_ids_json').notNull(),
     accessionsJson: text('accessions_json').notNull(),
     polymerType: text('polymer_type').notNull(),
-    sequenceLength: bigint('sequence_length', { mode: 'number' }),
+    sequenceLength: integer('sequence_length'),
   },
   (table) => [
     index('idx_targets_metadata__entity_name').using(
